@@ -1,10 +1,11 @@
-export interface MetaDataType {
+export interface MetadataType {
     name: string;
     tagline: string;
     icon: {
         dark: string;
         light: string;
         transparent: string;
+        transparentSVG: string;
     };
     author: {
         name: string;

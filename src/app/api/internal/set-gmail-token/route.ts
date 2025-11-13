@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/actions/auth";
 import { oAuth2Client } from "@/actions/secure";
-import { db } from "@/config/firebase.config";
+import { db } from "@/lib/firebase";
 
 export async function GET(request: NextRequest) {
   // Authorization check (uncomment if needed)

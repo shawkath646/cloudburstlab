@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { getAppData } from "@/actions/database/getMetaData";
+import { getAppData } from "@/actions/database/getMetadata";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
+
+// Skip static generation during build - this app requires runtime environment
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   const appData = await getAppData();

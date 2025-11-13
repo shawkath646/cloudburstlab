@@ -1,6 +1,14 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Tailwind CSS v4 configuration using CSS */
+@theme {
+  /* Content paths - equivalent to the old content config */
+  --content: "./src/**/*.{js,ts,jsx,tsx,mdx}";
+  
+  /* Custom theme extensions */
+  --background-image-gradient-radial: radial-gradient(var(--tw-gradient-stops));
+  --background-image-gradient-conic: conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops));
+}
 
 :root {
   --foreground-rgb: 0, 0, 0;

@@ -2,8 +2,9 @@
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { db } from "@/lib/firebase";
+import timestampToDate from "@/utils/timestampToDate";
 import { ClientAppDataType } from "@/types";
-import { timestampToDate } from "@/utils/timestampToDate";
+
 
 const getClientAppData = cache(async (appId: string) => {
     const clientAppDoc = await db.collection("clientApps").doc(appId).get();

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import sendMail from "@/config/nodemailer.config";
-import mailAttachmentTypes from "@/constant/mailAttachmentTypes.json";
+import sendMail from "@/lib/nodemailer";
+import mailAttachmentTypes from "@/constants/mailAttachmentTypes.json";
 
 export async function POST(request: NextRequest) {
     const headers = request.headers;

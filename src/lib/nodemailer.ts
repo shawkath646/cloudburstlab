@@ -2,7 +2,7 @@
 import { redirect } from "next/navigation";
 import nodemailer from "nodemailer";
 import { MailOptions } from "nodemailer/lib/json-transport";
-import { db } from "./firebase.config";
+import { db } from "./firebase";
 import { oAuth2Client } from "@/actions/secure";
 
 interface GmailApiConfigurationType {
