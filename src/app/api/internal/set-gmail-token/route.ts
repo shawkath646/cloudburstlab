@@ -3,11 +3,6 @@ import { oAuth2Client } from "@/actions/secure";
 import { db } from "@/lib/firebase";
 
 export async function GET(request: NextRequest) {
-  // Authorization check (uncomment if needed)
-  // const session = await getSession();
-  // if (session?.id !== process.env.DEVELOPER_ID) {
-  //   return NextResponse.json({ status: false, error: "User is not authorized for this action" }, { status: 401 });
-  // }
 
   const code = request.nextUrl.searchParams.get("code");
   if (!code) {

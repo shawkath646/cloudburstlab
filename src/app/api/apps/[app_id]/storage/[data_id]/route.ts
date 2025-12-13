@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateAppAuthentication, getApplicationStorage, updateApplicationStorage as updateStorage, deleteApplicationStorage as deleteStorage } from '@/actions/applicationStorage';
+import { validateAppAuthentication, getApplicationStorage, updateApplicationStorage as updateStorage, deleteApplicationStorage as deleteStorage } from '@/actions/database/applicationStorage';
 
 interface RouteParams {
     params: Promise<{

@@ -1,5 +1,3 @@
-"use server";
-
 import { cache } from "react";
 import { db } from "@/lib/firebase";
 
@@ -77,19 +75,37 @@ export const getApplicationStorage = cache(async (appId: string, dataId: string)
 
 export async function createApplicationStorage(appId: string, data: Record<string, any>): Promise<{ success: boolean; databaseId?: string; error?: string }> {
   try {
-    const storageRef = db
-      .collection('applications')
-      .doc(appId)
-      .collection('storage')
-      .doc();
+    let mainData = { ...data };
+    let subcollections: { key: string, items: any[] }[] = [];
+    for (const [key, value] of Object.entries(data)) {
+      if (key === 'collection' && Array.isArray(value)) {
+        subcollections.push({ key, items: value });
+        delete mainData[key];
+      }
+    }
+
+    let docId = mainData.id ? String(mainData.id) : undefined;
+    if (docId) {
+      delete mainData.id;
+    }
+    const storageRef = docId
+      ? db.collection('applications').doc(appId).collection('storage').doc(docId)
+      : db.collection('applications').doc(appId).collection('storage').doc();
 
     const storageData = {
       createdAt: new Date(),
       updatedAt: new Date(),
-      ...data
+      ...mainData
     };
 
     await storageRef.set(storageData);
+
+    for (const sub of subcollections) {
+      const subColRef = storageRef.collection(sub.key);
+      for (const item of sub.items) {
+        await subColRef.add(item);
+      }
+    }
 
     return {
       success: true,
@@ -112,12 +128,24 @@ export async function updateApplicationStorage(appId: string, dataId: string, da
       .collection('storage')
       .doc(dataId);
 
-    const updateData = {
-      ...data,
-      updatedAt: new Date()
-    };
-
-    await storageRef.update(updateData);
+    let mainData = { ...data };
+    let subcollections: { key: string, items: any[] }[] = [];
+    for (const [key, value] of Object.entries(data)) {
+      if (key === 'collection' && Array.isArray(value)) {
+        subcollections.push({ key, items: value });
+        delete mainData[key];
+      }
+    }
+    for (const sub of subcollections) {
+      const subColRef = storageRef.collection(sub.key);
+      const existing = await subColRef.get();
+      const batch = db.collection('applications').firestore.batch();
+      existing.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      for (const item of sub.items) {
+        await subColRef.add(item);
+      }
+    }
 
     return { success: true };
   } catch (error) {

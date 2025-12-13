@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateAppAuthentication, createApplicationStorage } from '@/actions/applicationStorage';
+import { validateAppAuthentication, createApplicationStorage } from '@/actions/database/applicationStorage';
 import { db } from '@/lib/firebase';
 
 interface RouteParams {
