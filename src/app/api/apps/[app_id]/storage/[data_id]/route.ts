@@ -5,6 +5,7 @@ interface RouteParams {
     params: Promise<{
         app_id: string;
         data_id: string;
+        sub_collection?: string;
     }>;
 }
 
@@ -13,7 +14,7 @@ export async function GET(
     { params }: RouteParams
 ) {
     try {
-        const { app_id, data_id } = await params;
+        const { app_id, data_id, sub_collection } = await params;
 
         const appSecret = request.headers.get('X-App-Secret');
 
@@ -33,7 +34,7 @@ export async function GET(
             );
         }
 
-        const storageData = await getApplicationStorage(app_id, data_id);
+        const storageData = await getApplicationStorage(app_id, data_id, sub_collection);
         
         if (!storageData) {
             return NextResponse.json(

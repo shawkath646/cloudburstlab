@@ -65,46 +65,66 @@ export async function POST(
 }
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-    try {
-        const { app_id } = await params;
-        const appSecret = request.headers.get('X-App-Secret');
+  try {
+    const { app_id } = await params;
+    const appSecret = request.headers.get('X-App-Secret');
 
-        if (!appSecret) {
-            return NextResponse.json(
-                { success: false, error: 'Missing authentication header: X-App-Secret' },
-                { status: 401 }
-            );
-        }
-
-        const authResult = await validateAppAuthentication(app_id, appSecret);
-
-        if (!authResult.valid) {
-            return NextResponse.json(
-                { success: false, error: authResult.error },
-                { status: authResult.error === 'App is not active' ? 403 : 401 }
-            );
-        }
-
-        const storageRef = db
-            .collection('applications')
-            .doc(app_id)
-            .collection('storage');
-        const snapshot = await storageRef.get();
-
-        const batch = db.collection('applications').firestore.batch();
-        snapshot.docs.forEach(doc => {
-            batch.delete(doc.ref);
-        });
-        await batch.commit();
-
-        return NextResponse.json({ success: true, deletedCount: snapshot.size }, { status: 200 });
-    } catch (error) {
-        console.error('Error deleting all app storage:', error);
-        return NextResponse.json(
-            { success: false, error: 'Internal server error' },
-            { status: 500 }
-        );
+    if (!appSecret) {
+      return NextResponse.json(
+        { success: false, error: 'Missing authentication header: X-App-Secret' },
+        { status: 401 }
+      );
     }
+
+    const authResult = await validateAppAuthentication(app_id, appSecret);
+
+    if (!authResult.valid) {
+      return NextResponse.json(
+        { success: false, error: authResult.error },
+        { status: authResult.error === 'App is not active' ? 403 : 401 }
+      );
+    }
+
+    const storageColRef = db.collection('applications').doc(app_id).collection('storage');
+    let totalDeleted = 0;
+
+    while (true) {
+      const snapshot = await storageColRef.limit(50).get();
+
+      if (snapshot.empty) {
+        break;
+      }
+
+      const batch = db.batch();
+      let operationCount = 0;
+
+      for (const doc of snapshot.docs) {
+        const subCollections = await doc.ref.listCollections();
+        
+        for (const subCol of subCollections) {
+          const subSnapshot = await subCol.get();
+          for (const subDoc of subSnapshot.docs) {
+            batch.delete(subDoc.ref);
+            operationCount++;
+          }
+        }
+
+        batch.delete(doc.ref);
+        operationCount++;
+      }
+
+      await batch.commit();
+      totalDeleted += snapshot.size;
+    }
+
+    return NextResponse.json({ success: true, deletedCount: totalDeleted }, { status: 200 });
+  } catch (error) {
+    console.error('Error deleting all app storage:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {

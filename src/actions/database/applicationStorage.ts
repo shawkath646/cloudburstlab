@@ -53,14 +53,20 @@ export async function validateAppAuthentication(appId: string, appSecret: string
   }
 }
 
-export const getApplicationStorage = cache(async (appId: string, dataId: string) => {
+export const getApplicationStorage = cache(async (appId: string, dataId: string, subCollection?: string) => {
   try {
-    const storageDoc = await db
+    const docRef = db
       .collection('applications')
       .doc(appId)
       .collection('storage')
-      .doc(dataId)
-      .get();
+      .doc(dataId);
+
+    if (subCollection) {
+      const snapshot = await docRef.collection(subCollection).get();
+      return snapshot.docs.map(doc => doc.data());
+    }
+
+    const storageDoc = await docRef.get();
     
     if (!storageDoc.exists) {
       return null;
@@ -73,24 +79,38 @@ export const getApplicationStorage = cache(async (appId: string, dataId: string)
   }
 });
 
+
 export async function createApplicationStorage(appId: string, data: Record<string, any>): Promise<{ success: boolean; databaseId?: string; error?: string }> {
   try {
+    const batch = db.batch();
     let mainData = { ...data };
     let subcollections: { key: string, items: any[] }[] = [];
-    for (const [key, value] of Object.entries(data)) {
-      if (key === 'collection' && Array.isArray(value)) {
-        subcollections.push({ key, items: value });
-        delete mainData[key];
+
+    if (Array.isArray(data.collection)) {
+      for (const col of data.collection) {
+        if (col?.name && Array.isArray(col.data)) {
+          subcollections.push({ key: col.name, items: col.data });
+        }
       }
+      delete mainData.collection;
     }
 
     let docId = mainData.id ? String(mainData.id) : undefined;
-    if (docId) {
-      delete mainData.id;
-    }
+    if (docId) delete mainData.id;
+
     const storageRef = docId
       ? db.collection('applications').doc(appId).collection('storage').doc(docId)
       : db.collection('applications').doc(appId).collection('storage').doc();
+
+    if (docId) {
+      const existingDoc = await storageRef.get();
+      if (existingDoc.exists) {
+        return {
+          success: false,
+          error: `Document with ID '${docId}' already exists.`
+        };
+      }
+    }
 
     const storageData = {
       createdAt: new Date(),
@@ -98,14 +118,17 @@ export async function createApplicationStorage(appId: string, data: Record<strin
       ...mainData
     };
 
-    await storageRef.set(storageData);
+    batch.set(storageRef, storageData);
 
     for (const sub of subcollections) {
       const subColRef = storageRef.collection(sub.key);
       for (const item of sub.items) {
-        await subColRef.add(item);
+        const newItemRef = subColRef.doc(); 
+        batch.set(newItemRef, item);
       }
     }
+
+    await batch.commit();
 
     return {
       success: true,
@@ -122,30 +145,37 @@ export async function createApplicationStorage(appId: string, data: Record<strin
 
 export async function updateApplicationStorage(appId: string, dataId: string, data: Record<string, any>): Promise<{ success: boolean; error?: string }> {
   try {
-    const storageRef = db
-      .collection('applications')
-      .doc(appId)
-      .collection('storage')
-      .doc(dataId);
+    const storageRef = db.collection('applications').doc(appId).collection('storage').doc(dataId);
+    const batch = db.batch();
 
     let mainData = { ...data };
     let subcollections: { key: string, items: any[] }[] = [];
-    for (const [key, value] of Object.entries(data)) {
-      if (key === 'collection' && Array.isArray(value)) {
-        subcollections.push({ key, items: value });
-        delete mainData[key];
+    
+    if (Array.isArray(data.collection)) {
+      for (const col of data.collection) {
+        if (col?.name && Array.isArray(col.data)) {
+          subcollections.push({ key: col.name, items: col.data });
+        }
       }
+      delete mainData.collection;
     }
+
+    const updateData = { ...mainData, updatedAt: new Date() };
+    batch.update(storageRef, updateData);
+
     for (const sub of subcollections) {
       const subColRef = storageRef.collection(sub.key);
       const existing = await subColRef.get();
-      const batch = db.collection('applications').firestore.batch();
+      
       existing.docs.forEach(doc => batch.delete(doc.ref));
-      await batch.commit();
+      
       for (const item of sub.items) {
-        await subColRef.add(item);
+        const newItemRef = subColRef.doc();
+        batch.set(newItemRef, item);
       }
     }
+
+    await batch.commit();
 
     return { success: true };
   } catch (error) {
@@ -159,12 +189,20 @@ export async function updateApplicationStorage(appId: string, dataId: string, da
 
 export async function deleteApplicationStorage(appId: string, dataId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    await db
-      .collection('applications')
-      .doc(appId)
-      .collection('storage')
-      .doc(dataId)
-      .delete();
+    const storageRef = db.collection('applications').doc(appId).collection('storage').doc(dataId);
+    
+    const subCollections = await storageRef.listCollections();
+    
+    for (const collection of subCollections) {
+        const snapshot = await collection.get();
+        if (!snapshot.empty) {
+          const batch = db.batch();
+          snapshot.docs.forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
+        }
+    }
+
+    await storageRef.delete();
 
     return { success: true };
   } catch (error) {

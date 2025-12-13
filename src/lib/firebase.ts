@@ -5,9 +5,9 @@ let app: admin.app.App | null = null;
 
 function initializeApp() {
     if (app) return app;
-    
-    if (admin.apps.length) {
-        app = admin.app();
+
+    if (admin.apps.length > 0) {
+        app = admin.apps[0]!;
         return app;
     }
 
@@ -33,26 +33,9 @@ function initializeApp() {
     return app;
 }
 
-const db = (() => {
-    let instance: admin.firestore.Firestore | null = null;
-    return {
-        collection: (name: string) => {
-            if (!instance) {
-                instance = admin.firestore(initializeApp());
-            }
-            return instance.collection(name);
-        }
-    };
-})();
-
-const bucket = (() => {
-    let instance: ReturnType<ReturnType<typeof admin.storage>['bucket']> | null = null;
-    return () => {
-        if (!instance) {
-            instance = admin.storage(initializeApp()).bucket();
-        }
-        return instance;
-    };
-})();
+const firebaseApp = initializeApp();
+const db = firebaseApp.firestore();
+db.settings({ ignoreUndefinedProperties: true });
+const bucket = firebaseApp.storage().bucket();
 
 export { db, bucket, FieldValue };
