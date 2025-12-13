@@ -14,7 +14,10 @@ export async function GET(
     { params }: RouteParams
 ) {
     try {
-        const { app_id, data_id, sub_collection } = await params;
+        const { app_id, data_id } = await params;
+        
+        const searchParams = request.nextUrl.searchParams;
+        const sub_collection = searchParams.get('subCollection');
 
         const appSecret = request.headers.get('X-App-Secret');
 

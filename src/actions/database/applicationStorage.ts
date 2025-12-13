@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { db } from "@/lib/firebase";
+import convertStringsToDates from "@/utils/convertStringsToDates";
 
 interface ApplicationData {
   author: string;
@@ -53,7 +54,7 @@ export async function validateAppAuthentication(appId: string, appSecret: string
   }
 }
 
-export const getApplicationStorage = cache(async (appId: string, dataId: string, subCollection?: string) => {
+export const getApplicationStorage = cache(async (appId: string, dataId: string, subCollection?: string |  null) => {
   try {
     const docRef = db
       .collection('applications')
@@ -79,15 +80,16 @@ export const getApplicationStorage = cache(async (appId: string, dataId: string,
   }
 });
 
-
 export async function createApplicationStorage(appId: string, data: Record<string, any>): Promise<{ success: boolean; databaseId?: string; error?: string }> {
   try {
+    const processedData = convertStringsToDates(data);
+
     const batch = db.batch();
-    let mainData = { ...data };
+    let mainData = { ...processedData };
     let subcollections: { key: string, items: any[] }[] = [];
 
-    if (Array.isArray(data.collection)) {
-      for (const col of data.collection) {
+    if (Array.isArray(processedData.collection)) {
+      for (const col of processedData.collection) {
         if (col?.name && Array.isArray(col.data)) {
           subcollections.push({ key: col.name, items: col.data });
         }
